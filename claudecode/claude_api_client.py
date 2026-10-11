@@ -57,13 +57,8 @@ class ClaudeAPIClient:
             Tuple of (success, error_message)
         """
         try:
-            # Simple test call to verify API access
-            self.client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hello"}],
-                timeout=10
-            )
+            # Verify the key works and the configured model is available
+            self.client.models.retrieve(self.model, timeout=10)
             logger.info("Claude API access validated successfully")
             return True, ""
         except Exception as e:
