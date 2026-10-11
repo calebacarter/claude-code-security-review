@@ -78,7 +78,8 @@ runs:
       if: github.event_name == 'pull_request'
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0 pinned to commit hash
       with:
-        path: .claudecode-marker
+        # Kept outside the workspace so a PR can't commit a marker file and skip the scan
+        path: ${{ runner.temp }}/claudecode-marker
         key: claudecode-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-${{ github.sha }}
         restore-keys: |
           claudecode-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-
@@ -101,10 +102,10 @@ runs:
 
           # Now check cache - if ClaudeCode has already run, disable unless run-every-commit is true
           # Check if marker file exists (cache may have been restored from a different SHA)
-          if [ "$RUN_EVERY_COMMIT" != "true" ] && [ -f ".claudecode-marker/marker.json" ]; then
+          if [ "$RUN_EVERY_COMMIT" != "true" ] && [ -f "$RUNNER_TEMP/claudecode-marker/marker.json" ]; then
             echo "ClaudeCode has already run on PR #$PR_NUMBER (found marker file), forcing disable to avoid false positives"
             ENABLE_CLAUDECODE="false"
-          elif [ "$RUN_EVERY_COMMIT" == "true" ] && [ -f ".claudecode-marker/marker.json" ]; then
+          elif [ "$RUN_EVERY_COMMIT" == "true" ] && [ -f "$RUNNER_TEMP/claudecode-marker/marker.json" ]; then
             echo "ClaudeCode has already run on PR #$PR_NUMBER but run-every-commit is enabled, running again"
           elif [ "$ENABLE_CLAUDECODE" == "true" ]; then
             echo "ClaudeCode will run for PR #$PR_NUMBER (first run)"
@@ -132,8 +133,8 @@ runs:
         RUN_NUMBER: ${{ github.run_number }}
       run: |
         # Create a reservation marker immediately to prevent other concurrent runs
-        mkdir -p .claudecode-marker
-        cat > .claudecode-marker/marker.json << EOF
+        mkdir -p "$RUNNER_TEMP/claudecode-marker"
+        cat > "$RUNNER_TEMP/claudecode-marker/marker.json" << EOF
         {
           "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
           "repository_id": "$REPOSITORY_ID",
@@ -151,7 +152,7 @@ runs:
       if: steps.claudecode-check.outputs.enable_claudecode == 'true' && github.event_name == 'pull_request'
       uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0 pinned to commit hash
       with:
-        path: .claudecode-marker
+        path: ${{ runner.temp }}/claudecode-marker
         key: claudecode-${{ github.repository_id }}-pr-${{ github.event.pull_request.number }}-${{ github.sha }}
     
     - name: Set up Node.js
